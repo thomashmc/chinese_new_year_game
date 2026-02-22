@@ -5,41 +5,183 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Chinese New Year Interactive Game</title>
     <style>
-        body { font-family: 'Segoe UI', 'Microsoft JhengHei', sans-serif; background-color: #8B0000; color: #fff; text-align: center; padding: 20px; }
-        h1 { color: #FFD700; text-shadow: 2px 2px 4px #000; margin-bottom: 10px; }
+        :root {
+            --cny-red: #8B0000;
+            --cny-gold: #FFD700;
+            --cny-orange: #FF4500;
+        }
+
+        body { 
+            font-family: 'Segoe UI', 'Microsoft JhengHei', sans-serif; 
+            background-color: var(--cny-red); 
+            color: #fff; 
+            text-align: center; 
+            padding: 10px; 
+            margin: 0;
+            overflow-x: hidden;
+        }
+
+        h1 { 
+            color: var(--cny-gold); 
+            text-shadow: 2px 2px 4px #000; 
+            margin: 15px 0 10px;
+            font-size: 1.8rem;
+        }
         
-        /* Reset Button Style */
-        .reset-container { margin-bottom: 20px; }
-        .reset-btn { background-color: #FFD700; color: #8B0000; border: none; padding: 10px 20px; font-size: 16px; font-weight: bold; border-radius: 5px; cursor: pointer; transition: 0.3s; }
+        .reset-container { margin-bottom: 15px; }
+        .reset-btn { 
+            background-color: var(--cny-gold); 
+            color: var(--cny-red); 
+            border: none; 
+            padding: 8px 16px; 
+            font-size: 14px; 
+            font-weight: bold; 
+            border-radius: 5px; 
+            cursor: pointer; 
+            transition: 0.3s;
+        }
         .reset-btn:hover { background-color: #fff; }
 
-        .grid { display: grid; grid-template-columns: repeat(10, 1fr); gap: 10px; max-width: 90%; margin: 0 auto; }
-        .box { background-color: #FF4500; border: 3px solid #FFD700; border-radius: 8px; height: 120px; display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: bold; cursor: pointer; transition: transform 0.2s, background-color 0.3s; }
+        /* --- 網格佈局設定 --- */
+        .grid { 
+            display: grid; 
+            /* 手機版：每行 3 格 */
+            grid-template-columns: repeat(3, 1fr); 
+            gap: 10px; 
+            width: 100%;
+            max-width: 1300px; /* 為了 8 格佈局，稍微加寬最大寬度 */
+            margin: 0 auto; 
+            padding: 10px;
+            box-sizing: border-box;
+        }
+
+        /* 桌大型電腦 (Desktop)：每行 8 格 */
+        @media (min-width: 992px) {
+            .grid { 
+                grid-template-columns: repeat(8, 1fr); 
+                gap: 12px;
+            }
+            h1 { font-size: 2.5rem; }
+        }
+
+        .box { 
+            background-color: var(--cny-orange); 
+            border: 3px solid var(--cny-gold); 
+            border-radius: 10px; 
+            aspect-ratio: 1 / 1; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            font-size: 1.3rem; /* 寬度較窄時縮小字體以免擠壓 */
+            font-weight: bold; 
+            cursor: pointer; 
+            transition: transform 0.2s, background-color 0.3s;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        }
+
+        @media (min-width: 1200px) {
+            .box { font-size: 1.5rem; }
+        }
+
         .box:hover { transform: scale(1.05); background-color: #FF6347; }
-        .box.used { background-color: #555 !important; border-color: #888 !important; color: #aaa !important; cursor: default; transform: none; }
+
+        .box.used { 
+            background-color: #555 !important; 
+            border-color: #888 !important; 
+            color: #aaa !important; 
+            cursor: default;
+            transform: none;
+            box-shadow: none;
+        }
         
-        /* Modal Styles */
-        #modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); justify-content: center; align-items: center; padding: 20px; z-index: 1000; }
-        .modal-content { background: #fff; color: #333; padding: 30px; border-radius: 15px; max-width: 800px; width: 90%; min-height: 400px; position: relative; display: flex; flex-direction: column; justify-content: center; }
-        .question-text { font-size: 28px; margin-bottom: 20px; font-weight: bold; line-height: 1.4; }
-        .choices { display: none; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 20px; }
-        .choice-btn { background: #f0f0f0; border: 2px solid #8B0000; padding: 15px; border-radius: 8px; cursor: pointer; font-size: 20px; transition: 0.3s; }
-        .choice-btn:hover { background: #FFE4E1; }
+        /* Modal 彈窗樣式 */
+        #modal { 
+            display: none; 
+            position: fixed; 
+            top: 0; left: 0; 
+            width: 100%; height: 100%; 
+            background: rgba(0,0,0,0.95); 
+            justify-content: center; 
+            align-items: center; 
+            z-index: 1000; 
+        }
+
+        .modal-content { 
+            background: #fff; 
+            color: #333; 
+            padding: 25px; 
+            border-radius: 20px; 
+            width: 90%; 
+            max-width: 550px; 
+            max-height: 85vh;
+            overflow-y: auto;
+            position: relative; 
+            box-shadow: 0 0 20px var(--cny-gold);
+        }
+
+        .question-text { 
+            font-size: 1.3rem; 
+            margin-bottom: 20px; 
+            font-weight: bold; 
+            line-height: 1.5; 
+            color: #222;
+        }
+
+        .choices { 
+            display: none; 
+            grid-template-columns: 1fr; 
+            gap: 12px; 
+            margin-top: 15px; 
+        }
+
+        .choice-btn { 
+            background: #fdfdfd; 
+            border: 2px solid var(--cny-red); 
+            padding: 14px; 
+            border-radius: 10px; 
+            font-size: 1.1rem; 
+            text-align: left;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        .choice-btn:hover { background: #fff5f5; }
         .choice-btn.correct { background-color: #4CAF50 !important; color: white; border-color: #388E3C; }
         .choice-btn.wrong { background-color: #f44336 !important; color: white; border-color: #d32f2f; }
         
-        .hint-btn { background: #FFD700; border: none; padding: 12px 24px; font-size: 18px; font-weight: bold; cursor: pointer; border-radius: 5px; margin: 10px auto; display: block; }
-        .close-btn { margin: 20px auto 0; background: #8B0000; color: white; border: none; padding: 10px 20px; cursor: pointer; border-radius: 5px; font-size: 16px; }
+        .hint-btn { 
+            background: var(--cny-gold); 
+            color: var(--cny-red);
+            width: 100%;
+            padding: 15px; 
+            font-size: 1.1rem; 
+            font-weight: bold; 
+            border-radius: 10px; 
+            border: none;
+            cursor: pointer;
+        }
+
+        .close-btn { 
+            margin-top: 20px; 
+            background: #444; 
+            color: white; 
+            padding: 12px; 
+            width: 100%;
+            border-radius: 10px; 
+            border: none;
+            cursor: pointer;
+            font-size: 1rem;
+        }
         
-        #feedback { font-size: 24px; font-weight: bold; margin-top: 15px; min-height: 30px; }
+        #feedback { font-size: 1.2rem; font-weight: bold; margin-top: 15px; min-height: 1.5em; }
     </style>
 </head>
 <body>
 
-    <h1>🧧 新年快樂！互動挑戰 🧧</h1>
+    <h1>🧧 新年挑戰 🧧</h1>
     
     <div class="reset-container">
-        <button class="reset-btn" onclick="resetGame()">🔄 重置所有進度</button>
+        <button class="reset-btn" onclick="resetGame()">🔄 重置遊戲進度</button>
     </div>
 
     <div class="grid" id="gameGrid"></div>
@@ -50,12 +192,11 @@
             <button class="hint-btn" id="hintBtn" onclick="showChoices()">顯示選項 (提示)</button>
             <div id="choicesContainer" class="choices"></div>
             <div id="feedback"></div>
-            <button class="close-btn" onclick="closeModal()">關閉並標記已使用</button>
+            <button class="close-btn" onclick="closeModal()">關閉視窗</button>
         </div>
     </div>
 
     <script>
-        // [cite_start]// 從資料來源提取的題目 [cite: 3]
         const rawData = [
             { q: "傳說中，放鞭炮和貼紅對聯是為了嚇跑哪隻怪獸？", a: ["A) 麒麟", "B) 年獸", "C) 龍", "D) 饕餮"], correct: 1 },
             { q: "除夕夜全家人聚在一起吃的飯稱為什麼？", a: ["A) 慶功宴", "B) 謝灶飯", "C) 團圓飯", "D) 臘八粥"], correct: 2 },
@@ -103,27 +244,19 @@
         let currentBox = null;
         let currentIndex = null;
         let answered = false;
-        
-        // 選取前 40 題
         const questions = rawData.slice(0, 40);
 
-        // 初始化遊戲
         function initGame() {
             grid.innerHTML = '';
-            // 讀取進度：從 LocalStorage 獲取已使用的索引陣列
             const savedProgress = JSON.parse(localStorage.getItem('cny_game_progress')) || [];
-
             questions.forEach((item, index) => {
                 const box = document.createElement('div');
                 box.className = 'box';
                 box.innerText = index + 1;
-                
-                // 如果該題已在進度中，標記為已使用
                 if (savedProgress.includes(index)) {
                     box.classList.add('used');
                     box.innerText = "✓";
                 }
-
                 box.onclick = () => openBox(index, box);
                 grid.appendChild(box);
             });
@@ -131,14 +264,12 @@
 
         function openBox(index, element) {
             if (element.classList.contains('used')) return;
-            
             currentBox = element;
             currentIndex = index;
             answered = false;
             const data = questions[index];
             document.getElementById('questionContainer').innerText = data.q;
             document.getElementById('feedback').innerText = '';
-            
             const choicesDiv = document.getElementById('choicesContainer');
             choicesDiv.innerHTML = '';
             data.a.forEach((choice, i) => {
@@ -148,7 +279,6 @@
                 btn.onclick = () => checkAnswer(i, data.correct, btn);
                 choicesDiv.appendChild(btn);
             });
-
             document.getElementById('modal').style.display = 'flex';
             document.getElementById('choicesContainer').style.display = 'none';
             document.getElementById('hintBtn').style.display = 'block';
@@ -161,10 +291,8 @@
 
         function checkAnswer(selectedIndex, correctIndex, btn) {
             if (answered) return;
-            
             const feedback = document.getElementById('feedback');
             const allBtns = document.querySelectorAll('.choice-btn');
-            
             if (selectedIndex === correctIndex) {
                 btn.classList.add('correct');
                 feedback.innerText = "✅ 正確！";
@@ -183,8 +311,6 @@
             if (currentBox && !currentBox.classList.contains('used')) {
                 currentBox.classList.add('used');
                 currentBox.innerText = "✓";
-                
-                // 儲存進度到 LocalStorage
                 saveProgress(currentIndex);
             }
         }
@@ -198,15 +324,13 @@
         }
 
         function resetGame() {
-            if (confirm("確定要重置所有遊戲進度嗎？所有完成的標記將被清除。")) {
+            if (confirm("確定要重置所有進度嗎？")) {
                 localStorage.removeItem('cny_game_progress');
                 initGame();
             }
         }
 
-        // 啟動遊戲
         initGame();
     </script>
 </body>
 </html>
-
