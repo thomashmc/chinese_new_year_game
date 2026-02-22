@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chinese New Year Interactive Game</title>
+    <style>
+        body { font-family: 'Segoe UI', 'Microsoft JhengHei', sans-serif; background-color: #8B0000; color: #fff; text-align: center; padding: 20px; }
+        h1 { color: #FFD700; text-shadow: 2px 2px 4px #000; margin-bottom: 10px; }
+        
+        /* Reset Button Style */
+        .reset-container { margin-bottom: 20px; }
+        .reset-btn { background-color: #FFD700; color: #8B0000; border: none; padding: 10px 20px; font-size: 16px; font-weight: bold; border-radius: 5px; cursor: pointer; transition: 0.3s; }
+        .reset-btn:hover { background-color: #fff; }
+
+        .grid { display: grid; grid-template-columns: repeat(10, 1fr); gap: 10px; max-width: 1300px; margin: 0 auto; }
+        .box { background-color: #FF4500; border: 3px solid #FFD700; border-radius: 8px; height: 120px; display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: bold; cursor: pointer; transition: transform 0.2s, background-color 0.3s; }
+        .box:hover { transform: scale(1.05); background-color: #FF6347; }
+        .box.used { background-color: #555 !important; border-color: #888 !important; color: #aaa !important; cursor: default; transform: none; }
+        
+        /* Modal Styles */
+        #modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); justify-content: center; align-items: center; padding: 20px; z-index: 1000; }
+        .modal-content { background: #fff; color: #333; padding: 30px; border-radius: 15px; max-width: 800px; width: 90%; min-height: 400px; position: relative; display: flex; flex-direction: column; justify-content: center; }
+        .question-text { font-size: 28px; margin-bottom: 20px; font-weight: bold; line-height: 1.4; }
+        .choices { display: none; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 20px; }
+        .choice-btn { background: #f0f0f0; border: 2px solid #8B0000; padding: 15px; border-radius: 8px; cursor: pointer; font-size: 20px; transition: 0.3s; }
+        .choice-btn:hover { background: #FFE4E1; }
+        .choice-btn.correct { background-color: #4CAF50 !important; color: white; border-color: #388E3C; }
+        .choice-btn.wrong { background-color: #f44336 !important; color: white; border-color: #d32f2f; }
+        
+        .hint-btn { background: #FFD700; border: none; padding: 12px 24px; font-size: 18px; font-weight: bold; cursor: pointer; border-radius: 5px; margin: 10px auto; display: block; }
+        .close-btn { margin: 20px auto 0; background: #8B0000; color: white; border: none; padding: 10px 20px; cursor: pointer; border-radius: 5px; font-size: 16px; }
+        
+        #feedback { font-size: 24px; font-weight: bold; margin-top: 15px; min-height: 30px; }
+    </style>
+</head>
+<body>
+
+    <h1>🧧 新年快樂！互動挑戰 🧧</h1>
+    
+    <div class="reset-container">
+        <button class="reset-btn" onclick="resetGame()">🔄 重置所有進度</button>
+    </div>
+
+    <div class="grid" id="gameGrid"></div>
+
+    <div id="modal">
+        <div class="modal-content">
+            <div id="questionContainer" class="question-text"></div>
+            <button class="hint-btn" id="hintBtn" onclick="showChoices()">顯示選項 (提示)</button>
+            <div id="choicesContainer" class="choices"></div>
+            <div id="feedback"></div>
+            <button class="close-btn" onclick="closeModal()">關閉並標記已使用</button>
+        </div>
+    </div>
+
+    <script>
+        // [cite_start]// 從資料來源提取的題目 [cite: 3]
+        const rawData = [
+            { q: "傳說中，放鞭炮和貼紅對聯是為了嚇跑哪隻怪獸？", a: ["A) 麒麟", "B) 年獸", "C) 龍", "D) 饕餮"], correct: 1 },
+            { q: "除夕夜全家人聚在一起吃的飯稱為什麼？", a: ["A) 慶功宴", "B) 謝灶飯", "C) 團圓飯", "D) 臘八粥"], correct: 2 },
+            { q: "過年吃年糕，寓意是什麼？", a: ["A) 招財進寶", "B) 步步高升", "C) 長命百歲", "D) 團團圓圓"], correct: 1 },
+            { q: "哪種水果因為諧音「大吉大利」，是過年常備的水果？", a: ["A) 蘋果", "B) 橘子", "C) 西瓜", "D) 葡萄"], correct: 1 },
+            { q: "「倒」貼福字，象徵著什麼意思？", a: ["A) 福氣弄丟了", "B) 福氣倒霉", "C) 福到了", "D) 福氣滿滿"], correct: 2 },
+            { q: "傳統習俗中，大年初幾是「回娘家」的日子？", a: ["A) 初一", "B) 初二", "C) 初三", "D) 初五"], correct: 1 },
+            { q: "過年吃的「餃子」形狀像什麼，所以象徵財富？", a: ["A) 圓球", "B) 元寶", "C) 月亮", "D) 錢袋"], correct: 1 },
+            { q: "十二生肖中，唯一一個現實中不存在的動物是？", a: ["A) 蛇", "B) 龍", "C) 虎", "D) 猴"], correct: 1 },
+            { q: "哪一個節慶象徵農曆新年的結束？", a: ["A) 端午節", "B) 中秋節", "C) 元宵節", "D) 重陽節"], correct: 2 },
+            { q: "魚是年夜飯必備菜餚，象徵什麼？", a: ["A) 年年有餘", "B) 魚躍龍門", "C) 水到渠成", "D) 年年平安"], correct: 0 },
+            { q: "過年時，長輩給晚輩的錢通稱為？", a: ["A) 零用錢", "B) 獎勵金", "C) 壓歲錢", "D) 辛苦錢"], correct: 2 },
+            { q: "鳳梨在台語中諧音為什麼，象徵好運？", a: ["A) 旺來", "B) 福來", "C) 財來", "D) 運來"], correct: 0 },
+            { q: "什麼樣的年份會被稱為「本命年」？", a: ["A) 滿十歲的年份", "B) 自己的生肖與當年相同", "C) 本月生日", "D) 閏年"], correct: 1 },
+            { q: "元宵節除了看燈籠，還有什麼核心活動？", a: ["A) 賽龍舟", "B) 猜燈謎", "C) 賞月", "D) 登高"], correct: 1 },
+            { q: "壓歲錢通常裝在什麼顏色的封袋裡？", a: ["A) 黃色", "B) 紫色", "C) 紅色", "D) 金色"], correct: 2 },
+            { q: "十二生肖中，排在第一位的是？", a: ["A) 虎", "B) 牛", "C) 鼠", "D) 豬"], correct: 2 },
+            { q: "哪一天被稱為「財神生日」，商店通常會在這天開市？", a: ["A) 初一", "B) 初三", "C) 初五", "D) 初八"], correct: 2 },
+            { q: "正月初七被稱為什麼日子？", a: ["A) 天日", "B) 地日", "C) 人日", "D) 穀日"], correct: 2 },
+            { q: "祭灶節（小年）要供奉糖瓜，是為了讓哪位神明嘴甜一點？", a: ["A) 土地公", "B) 灶神", "C) 文昌帝君", "D) 財神"], correct: 1 },
+            { q: "廣東、香港一帶過年常吃的「髮菜」，諧音是什麼？", a: ["A) 發財", "B) 發奮", "C) 發達", "D) 發育"], correct: 0 },
+            { q: "俗話說「初三睡到飽」，傳說這一天是誰娶親的日子？", a: ["A) 貓媽媽", "B) 老鼠", "C) 龍王", "D) 年獸"], correct: 1 },
+            { q: "過年期間不能拿掃帚向外掃地，主要是怕什麼？", a: ["A) 把灰塵揚起", "B) 把財氣掃出去", "C) 掃帚會壞掉", "D) 惹怒地基主"], correct: 1 },
+            { q: "除夕夜熬夜到天亮，這叫什麼？", a: ["A) 守夜", "B) 守歲", "C) 守靈", "D) 守時"], correct: 1 },
+            { q: "舞獅表演中，南獅又被稱為什麼？", a: ["A) 勇獅", "B) 猛獅", "C) 醒獅", "D) 瑞獅"], correct: 2 },
+            { q: "正月初九是「天公生」，指的是哪位神明的誕辰？", a: ["A) 玉皇大帝", "B) 關聖帝君", "C) 媽祖", "D) 觀世音"], correct: 0 },
+            { q: "古代農曆十二月又被稱作什麼月？", a: ["A) 桃月", "B) 臘月", "C) 菊月", "D) 杏月"], correct: 1 },
+            { q: "傳統紅包金額為什麼要避開單數？", a: ["A) 單數不吉利", "B) 好事成雙", "C) 為了好計算", "D) 怕弄丟"], correct: 1 },
+            { q: "哪種植物與梅、竹並稱「歲寒三友」？", a: ["A) 蘭", "B) 菊", "C) 松", "D) 柏"], correct: 2 },
+            { q: "過年常說的「五福臨門」，第一福指的是？", a: ["A) 富貴", "B) 長壽", "C) 康寧", "D) 好德"], correct: 1 },
+            { q: "春節放鞭炮最初的科學作用是什麼？", a: ["A) 慶祝勝利", "B) 驅除瘴氣與疫病", "C) 照明", "D) 傳遞訊息"], correct: 1 },
+            { q: "春聯的起源是古代掛在門上的什麼？", a: ["A) 柳條", "B) 桃符", "C) 鐵牌", "D) 畫像"], correct: 1 },
+            { q: "火藥發明前，「爆竹」是怎麼發出響聲的？", a: ["A) 用力摔", "B) 燒烤竹子使之炸裂", "C) 敲擊竹筒", "D) 吹氣"], correct: 1 },
+            { q: "門神中最著名的秦叔寶與尉遲恭是哪個朝代的將軍？", a: ["A) 漢朝", "B) 唐朝", "C) 宋朝", "D) 明朝"], correct: 1 },
+            { q: "春聯書寫時，上聯的最後一個字通常是什麼聲調？", a: ["A) 平聲", "B) 仄聲", "C) 輕聲", "D) 去聲"], correct: 1 },
+            { q: "「一元復始」中的「一元」是指？", a: ["A) 一塊錢", "B) 第一個月", "C) 新的一年", "D) 第一天"], correct: 2 },
+            { q: "俗稱的「破五」是指哪一天？", a: ["A) 初五", "B) 十五", "C) 初一", "D) 除夕"], correct: 0 },
+            { q: "「冬至大如年」，冬至在古代又被稱為什麼？", a: ["A) 歲首", "B) 亞歲", "C) 終歲", "D) 臘日"], correct: 1 },
+            { q: "「歲朝清供」是指過年時在案頭擺放什麼？", a: ["A) 金條", "B) 鮮花、蔬果、古玩", "C) 祖先牌位", "D) 年年有飯"], correct: 1 },
+            { q: "現代「春節」這個正式名稱，是在哪個時期確定的？", a: ["A) 清朝", "B) 民國", "C) 唐朝", "D) 元朝"], correct: 1 },
+            { q: "農曆是屬於哪一種曆法？", a: ["A) 陰曆", "B) 陽曆", "C) 陰陽合曆", "D) 星座曆"], correct: 2 }
+        ];
+
+        const grid = document.getElementById('gameGrid');
+        let currentBox = null;
+        let currentIndex = null;
+        let answered = false;
+        
+        // 選取前 40 題
+        const questions = rawData.slice(0, 40);
+
+        // 初始化遊戲
+        function initGame() {
+            grid.innerHTML = '';
+            // 讀取進度：從 LocalStorage 獲取已使用的索引陣列
+            const savedProgress = JSON.parse(localStorage.getItem('cny_game_progress')) || [];
+
+            questions.forEach((item, index) => {
+                const box = document.createElement('div');
+                box.className = 'box';
+                box.innerText = index + 1;
+                
+                // 如果該題已在進度中，標記為已使用
+                if (savedProgress.includes(index)) {
+                    box.classList.add('used');
+                    box.innerText = "✓";
+                }
+
+                box.onclick = () => openBox(index, box);
+                grid.appendChild(box);
+            });
+        }
+
+        function openBox(index, element) {
+            if (element.classList.contains('used')) return;
+            
+            currentBox = element;
+            currentIndex = index;
+            answered = false;
+            const data = questions[index];
+            document.getElementById('questionContainer').innerText = data.q;
+            document.getElementById('feedback').innerText = '';
+            
+            const choicesDiv = document.getElementById('choicesContainer');
+            choicesDiv.innerHTML = '';
+            data.a.forEach((choice, i) => {
+                const btn = document.createElement('button');
+                btn.className = 'choice-btn';
+                btn.innerText = choice;
+                btn.onclick = () => checkAnswer(i, data.correct, btn);
+                choicesDiv.appendChild(btn);
+            });
+
+            document.getElementById('modal').style.display = 'flex';
+            document.getElementById('choicesContainer').style.display = 'none';
+            document.getElementById('hintBtn').style.display = 'block';
+        }
+
+        function showChoices() {
+            document.getElementById('choicesContainer').style.display = 'grid';
+            document.getElementById('hintBtn').style.display = 'none';
+        }
+
+        function checkAnswer(selectedIndex, correctIndex, btn) {
+            if (answered) return;
+            
+            const feedback = document.getElementById('feedback');
+            const allBtns = document.querySelectorAll('.choice-btn');
+            
+            if (selectedIndex === correctIndex) {
+                btn.classList.add('correct');
+                feedback.innerText = "✅ 正確！";
+                feedback.style.color = "#4CAF50";
+            } else {
+                btn.classList.add('wrong');
+                allBtns[correctIndex].classList.add('correct');
+                feedback.innerText = "❌ 答錯了！";
+                feedback.style.color = "#f44336";
+            }
+            answered = true;
+        }
+
+        function closeModal() {
+            document.getElementById('modal').style.display = 'none';
+            if (currentBox && !currentBox.classList.contains('used')) {
+                currentBox.classList.add('used');
+                currentBox.innerText = "✓";
+                
+                // 儲存進度到 LocalStorage
+                saveProgress(currentIndex);
+            }
+        }
+
+        function saveProgress(index) {
+            let progress = JSON.parse(localStorage.getItem('cny_game_progress')) || [];
+            if (!progress.includes(index)) {
+                progress.push(index);
+                localStorage.setItem('cny_game_progress', JSON.stringify(progress));
+            }
+        }
+
+        function resetGame() {
+            if (confirm("確定要重置所有遊戲進度嗎？所有完成的標記將被清除。")) {
+                localStorage.removeItem('cny_game_progress');
+                initGame();
+            }
+        }
+
+        // 啟動遊戲
+        initGame();
+    </script>
+</body>
+</html>
